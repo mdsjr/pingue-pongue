@@ -1,0 +1,274 @@
+<!DOCTYPE html> <!-- Indica que este é um documento HTML -->
+<html lang="en"> <!-- Define o idioma do documento (inglês) -->
+
+<head>
+    <meta charset="UTF-8"> <!-- Define a codificação de caracteres do documento como UTF-8 -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Configuração para compatibilidade com o Internet Explorer -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Configuração de visualização para dispositivos móveis -->
+    <title> Jogo Ping-Pong </title> <!-- Título da página exibido na guia do navegador -->
+    <style>
+        * {
+            overflow: hidden;
+            /* Oculta a barra de rolagem quando necessário */
+            margin: 0;
+            /* Remove margens externas */
+            padding: 0;
+            /* Remove preenchimento (espaço interno) */
+        }
+    </style>
+</head>
+
+<body>
+    <canvas> </canvas> <!-- Um elemento de tela de desenho para o jogo será criado aqui -->
+    <script>
+        // JavaScript começa aqui
+
+        // Seleciona o elemento <canvas> no documento
+        const canvasEl = document.querySelector("canvas");
+
+        // Obtém o contexto de desenho 2D do elemento <canvas>
+        const canvasCtx = canvasEl.getContext("2d");
+
+        // Define a largura do espaço vazio à esquerda do campo
+        const gapX = 10;
+
+        const mouse = { x:0, y:0}
+
+        // Define a largura da linha no meio do campo
+        const lineWidth = 15;
+
+        // Objeto "field" representa o campo do jogo
+        const field = {
+            w: window.innerWidth, // Largura igual à largura da janela do navegador
+            h: window.innerHeight, // Altura igual à altura da janela do navegador
+            draw: function () {
+                // Define a cor de preenchimento para o campo
+                canvasCtx.fillStyle = "#286047";
+                // Preenche o retângulo representando o campo
+                canvasCtx.fillRect(0, 0, this.w, this.h);
+            }
+        }
+
+        // Objeto "line" representa a linha central do campo
+        const line = {
+            w: 15, // Largura da linha
+            h: field.h, // Altura igual à altura do campo
+            draw: function () {
+                // Define a cor de preenchimento para a linha
+                canvasCtx.fillStyle = "#ffffff";
+                // Preenche o retângulo representando a linha central
+                canvasCtx.fillRect(field.w / 2 - this.w / 2, 0, this.w, this.h);
+            },
+        }
+
+        // Objeto "leftPaddle" representa a raquete esquerda
+        const leftPaddle = {
+            x: gapX, // Posição X da raquete
+            y: 100, // Posição Y da raquete
+            w: line.w, // Largura da raquete igual à largura da linha
+            h: 200, // Altura da raquete
+            _move: function(){
+                this.y = mouse.y - this.h/2
+            },
+            draw: function () {
+                // Define a cor de preenchimento para a raquete
+                canvasCtx.fillStyle = "#ffffff";
+                // Preenche o retângulo representando a raquete esquerda
+                canvasCtx.fillRect(this.x, this.y, this.w, this.h);
+
+                this._move()
+            },
+        }
+
+        // Objeto "rightPaddle" representa a raquete direita
+        const rightPaddle = {
+            x: field.w - line.w - gapX, // Posição X da raquete direita
+            y: 350, // Posição Y da raquete
+            w: line.w, // Largura da raquete igual à largura da linha
+            h: 200, // Altura da raquete
+            speed: 3,
+            _move: function(){
+                if(this.y + this.h / 2 < ball.y + ball.r){
+                    this.y += this.speed
+                } else {
+                    this.y -=this.speed
+                }
+            },
+            speedUp: function(){
+                this.speed +=1
+            },
+            draw: function () {
+                // Define a cor de preenchimento para a raquete
+                canvasCtx.fillStyle = "#ffffff";
+                // Preenche o retângulo representando a raquete direita
+                canvasCtx.fillRect(this.x, this.y, this.w, this.h);
+
+
+                this._move()
+            },
+        }
+        const score = {
+            human: 0,
+            computer: 0,
+            increaseHuman: function() {
+                this.human++
+            },
+            increaseComputer: function() {
+                this.computer++
+            },
+            draw: function () {
+                canvasCtx.font = "bold 72px Arial"; // Define a fonte e o tamanho
+                canvasCtx.textAlign = 'center'; // Define a alinhamento do texto
+                canvasCtx.textBaseline = 'top'; // Define a posição base do texto
+                canvasCtx.fillStyle = "#01341D"; // Define a cor do texto
+                // Exibe os números do placar nas coordenadas especificadas
+                canvasCtx.fillText(this.human, field.w / 4, 50);
+                canvasCtx.fillText(this.computer, field.w / 4 + field.w / 2, 50)
+            },
+        }
+
+        const ball = {
+            x: field.w / 2, // A coordenada X da posição da bola no campo
+            y: field.h /2, // A coordenada Y da posição da bola no campo
+            r: 30,  // O raio da bola
+            speed: 5,
+            directionX: 1,
+            directionY: 1,
+            _calcPosition: function() {
+                //verifica se o jogador 1 fez um ponto (x > largura do campo)
+                if(this.x > field.w - this.r - rightPaddle.w - gapX){
+                    //verifica se a raquete direita está na posição y da bola
+                    if(
+                        this.y + this.r > rightPaddle.y && 
+                        this.y - this.r < rightPaddle.y + rightPaddle.h
+                        ){
+                            //rebate a bola invertendo o sinal de X
+                            this._reverseX()
+                    } else {
+                        //pontuar o jogador um
+                        score.increaseHuman()
+                        this._pontUp()
+                    }
+                }
+                //verifica se o jogador 2 fez um ponto (x<0)
+                if(this.x < this.r + leftPaddle.w + gapX){
+                    //verifica se a requete esquerda está na posição y da bola
+                    if(this.y > leftPaddle.y && this.y < leftPaddle.y + leftPaddle.h){
+                        this._reverseX()
+                    } else {
+                        //pontuar jogador 2
+                        score.increaseComputer()
+                        this._pontUp()
+                    }
+
+                }
+                //verifica as laterais superior e inferior do campo
+                if(
+                (this.y - this.r < 0 && this.directionY <0)      ||       
+                (this.y > field.h - this.r && this.directionY > 0) )
+                {
+                 // rebate a bola invertendo o sinal do eixo   
+                    this._reverseY()
+                }
+            },
+            _reverseX: function() {
+                this.directionX *= -1
+            },
+            _reverseY: function(){
+                this.directionY *= -1
+            },
+            _speedUp: function(){
+                this.speed +=2
+
+            },
+            _pontUp: function(){
+                this._speedUp()
+                rightPaddle.speedUp()
+                this.x = field.w / 2
+                this.y = field.h /2
+            },
+            _move: function () {
+                this.x += this.directionX * this.speed
+                this.y += this.directionY * this.speed
+            },
+            draw: function () {
+                // Define a cor de preenchimento para a bola como branco.
+                canvasCtx.fillStyle = "#ffffff";
+                // Inicia o processo de desenhar a bola.
+                canvasCtx.beginPath();
+                // Desenha a bola como um círculo usando a função arc.
+                // A posição X e Y da bola, o raio e os ângulos definem o círculo.
+                canvasCtx.arc(this.x, this.y, this.r, 0, 2 * Math.PI, false);
+                // Finaliza o desenho da bola, preenchendo-a com a cor definida.
+                canvasCtx.fill();
+
+                this._calcPosition()
+                this._move()
+
+            },
+        }
+
+        // Função "setup" para configurar o tamanho do elemento <canvas>
+        function setup() {
+            canvasEl.width = canvasCtx.width = field.w; // Define a largura do canvas
+            canvasEl.height = canvasCtx.height = field.h; // Define a altura do canvas
+        }
+
+        // Função "draw" para desenhar os elementos do jogo
+        function draw() {
+            field.draw(), // Desenha o campo
+                line.draw(),// Desenha a linha central
+                leftPaddle.draw(), // Desenha a raquete esquerda
+                rightPaddle.draw(), // Desenha a raquete direita
+                score.draw() //Desenha o placar
+            ball.draw() // Desenha a bola
+        }
+
+        // A função "animateFrame" é definida como uma função anônima imediatamente invocada (IIFE) 
+        //que retorna uma das funções de solicitação de animação disponíveis nos navegadores ou uma 
+        //função de fallback.
+        window.animateFrame = (function () {
+            return (
+                window.requestAnimationFrame ||
+                // Verifica se o navegador suporta a função de solicitação de animação padrão.
+                window.webkitRequestAnimationFrame ||
+                // Verifica se o navegador suporta a função de solicitação de animação do Webkit.
+                window.mozRequestAnimationFrame ||
+                // Verifica se o navegador suporta a função de solicitação de animação do Mozilla.
+                window.oRequestAnimationFrame ||
+                // Verifica se o navegador suporta a função de solicitação de animação da Opera.
+                window.msRequestAnimationFrama ||
+                // Verifica se o navegador suporta a função de solicitação de animação do Internet Explorer.
+                function (callback) {
+                // Função de fallback caso nenhuma das funções de solicitação de animação seja suportada. 
+                //Ela usa setTimeout para criar uma animação com uma taxa de atualização 
+                //aproximada de 60 quadros por segundo.
+                return window.setTimeout(callback, 1000 / 60);
+                }
+            );
+        })();
+        // A função "main" é definida.
+        function main() {
+            // Chama a função "animateFrame" passando a si mesma como callback para criar um loop de animação.
+            animateFrame(main);
+            // Chama a função "draw" para desenhar a animação.
+            draw();
+        }
+        // Chama a função "setup" para realizar configurações iniciais.
+        setup();
+        // Chama a função "main" para iniciar o loop de animação.
+        main();
+
+        canvasEl.addEventListener("mousemove", function (e) {
+            mouse.x = e.pageX
+            mouse.y = e.pageY
+
+            console.log(mouse)
+        })
+        // JavaScript termina aqui
+    </script>
+</body>
+
+</html>
